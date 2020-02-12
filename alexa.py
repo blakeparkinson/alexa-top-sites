@@ -65,8 +65,8 @@ class AlexaTopSites:
         self.secret_access_key = secret_access_key
         self.ranking = {}
 
-    def get_sites(self, start, count, country_code, time_stamp, date_stamp):
-        authorization_header = self.calc_auth_header(start, count, country_code, time_stamp, date_stamp)
+    def get_sites(self, start, count, time_stamp, date_stamp):
+        authorization_header = self.calc_auth_header(start, count, time_stamp, date_stamp)
 
         headers = {
             "Accept": "application/xml",
@@ -75,27 +75,25 @@ class AlexaTopSites:
             "Authorization": authorization_header
         }
 
-        url = "https://%s%s?%s" % (AWS_HOST, AWS_URI, self.gen_query_string(start, count, country_code))
+        url = "https://%s%s?%s" % (AWS_HOST, AWS_URI, self.gen_query_string(start, count))
 
         r = requests.get(url, headers=headers)
         content = r.text
-        print r.text
         ranking = self.parse(content)
         self.out(ranking)
 
     @staticmethod
-    def gen_query_string(start, count, country_code):
+    def gen_query_string(start, count):
         query = {
             "Action": AWS_ACTION,
             "ResponseGroup": AWS_RESPONSE_GROUP,
             "Start": start,
-            "Count": count,
-            "CountryCode": country_code
+            "Count": count
         }
         query_string = "&".join(["%s=%s" % (param, query[param]) for param in sorted(query)])
         return query_string
 
-    def calc_auth_header(self, start, count, country_code, time_stamp, date_stamp):
+    def calc_auth_header(self, start, count, time_stamp, date_stamp):
         """
         Create an authorization header by signing multiple times.
         """
@@ -108,7 +106,7 @@ class AlexaTopSites:
         headers_list = ";".join([h for h in headers])
         headers_string = "\n".join(["%s:%s" % (param, headers[param]) for param in headers]) + "\n"
 
-        query_string = self.gen_query_string(start, count, country_code)
+        query_string = self.gen_query_string(start, count)
         payload_hash = Helper.hash("")
 
         canonical_request = "\n".join(["GET", AWS_URI, query_string, headers_string, headers_list, payload_hash])
@@ -168,7 +166,7 @@ def main():
 
     parser.add_argument('-key', action='store', dest='access_key_id', required=True)
     parser.add_argument('-secret', action='store', dest='secret_access_key', required=True)
-    parser.add_argument('-country', action='store', dest='country_code', required=True)
+    parser.add_argument('-country', action='store', dest='country_code')
     parser.add_argument('-count', action='store', dest='count', type=int, required=True)
     parser.add_argument('-start', action='store', dest='start', type=int)
 
@@ -192,10 +190,10 @@ def main():
         start = 1
 
     for i in range(int(count / AWS_MAX_COUNT)):
-        ats.get_sites(start, AWS_MAX_COUNT, country_code, time_stamp, date_stamp)
+        ats.get_sites(start, AWS_MAX_COUNT, time_stamp, date_stamp)
         start += AWS_MAX_COUNT
 
-    ats.get_sites(start, count % AWS_MAX_COUNT, country_code, time_stamp, date_stamp)
+    ats.get_sites(start, count % AWS_MAX_COUNT, time_stamp, date_stamp)
 
 
 if __name__ == '__main__':
